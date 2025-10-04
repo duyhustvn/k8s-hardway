@@ -7,3 +7,8 @@
     include_tasks: 01.download_components.yml
   tags: [ download_component ]
     
+- block:
+  - name: Step 02 Setup dns
+    include_tasks: 02.setup_dns.yml
+  tags: [ setup_dns ]
+ 

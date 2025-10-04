@@ -1,0 +1,37 @@
+- block:
+  - name: Add fqdn and alias 
+    lineinfile:
+      path: "/etc/hosts"
+      regexp: '^127\.0\.0\.1\s+' # replace the existing 127.0.0.1 line 
+      line: "127.0.0.1 {{ fqdn }} {{ alias }}"
+      state: present
+  - name: Set hostname 
+    shell: |
+      hostnamectl set-hostname {{ alias }}
+  - name: Restart systemd-hostnamed
+    systemd:
+      name: systemd-hostnamed
+      state: restarted
+  - name: Get the hostname fqdn after changed
+    shell: |
+      hostname --fqdn
+    register: hostname_fqdn
+  - name: Print the hostname fqdn after changed
+    debug:
+      var: hostname_fqdn.stdout
+  - name: Get the hostname after changed
+    shell: |
+      hostname 
+    register: hostname_alias
+  - name: Print the hostname alias after changed
+    debug:
+      var: hostname_alias.stdout
+
+- block: 
+  - name: Tell all k8s about other host 
+    lineinfile: 
+      path: '/etc/hosts'
+      regexp: '^{{ hostvars[item].ansible_host }}\s+' 
+      line: "{{ hostvars[item].ansible_host }} {{ hostvars[item].fqdn }} {{ hostvars[item].alias }}"
+      state: present
+    loop: "{{ groups['k8s'] }}"
