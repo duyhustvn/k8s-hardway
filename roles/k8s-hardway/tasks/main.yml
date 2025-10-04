@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for roles/k8s-hardway
+
+- block:
+  - name: Step 01 Download k8s components 
+    include_tasks: 01.download_components.yml
+  tags: [ download_component ]
+    

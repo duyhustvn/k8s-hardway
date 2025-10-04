@@ -1,0 +1,24 @@
+---
+- name: Setup K8s cluster
+  hosts: k8s
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Debug
+      debug:
+        msg: "playbook_dir: {{ playbook_dir }}, inventory_hostname: {{ inventory_hostname }}"
+      tags: [ debug ]
+
+    - name: Debug
+      debug:
+        msg: "Proxy is SET to '{{ proxy }}'"
+      when: (proxy | default('')) | trim != ""
+
+    - name: Debug
+      debug:
+        msg: "Proxy is not SET"
+      when: (proxy | default('')) | trim == ""
+
+  roles:
+    - k8s-hardway

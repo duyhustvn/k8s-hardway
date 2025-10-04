@@ -1,0 +1,20 @@
+- block:
+  - name: Make sure the destination folder exists
+    delegate_to: localhost
+    run_once: true # download happens only once
+    become: false
+    file:
+      path: "{{ role_path }}/files/k8s_components"
+      state: "directory"
+
+  - name: Download k8s components 
+    delegate_to: localhost
+    run_once: true # download happens only once
+    become: false
+    get_url:
+      url: "{{ item }}"
+      dest: "{{ role_path }}/files/k8s_components/"
+      force: no # existing file is not re-downloaded
+      validate_certs: yes
+    environment: "{{ proxy | default('') | trim | ternary({'http_proxy': proxy, 'https_proxy': proxy}, {}) }}"
+    loop: "{{ components_url }}"
