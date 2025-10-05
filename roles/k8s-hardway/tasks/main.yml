@@ -11,4 +11,9 @@
   - name: Step 02 Setup dns
     include_tasks: 02.setup_dns.yml
   tags: [ setup_dns ]
+
+- block:
+  - name: Step 03 Config certiticates
+    include_tasks: 03.config_certs.yml
+  tags: [ config_certs ]
  

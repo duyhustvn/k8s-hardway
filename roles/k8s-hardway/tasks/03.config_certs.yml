@@ -1,0 +1,106 @@
+- block:
+  - name: Create certs folder 
+    delegate_to: localhost
+    run_once: true
+    become: false
+    file:
+      path: "{{ role_path }}/files/certs"
+      state: "directory"
+
+  - name: Genarate CA private key and cert
+    delegate_to: localhost
+    run_once: true
+    become: false
+    shell: |
+      openssl genrsa -out ca.key 4096
+      openssl req -x509 -new -sha512 -noenc \
+        -key ca.key -days 3653 \
+        -config {{ role_path }}/templates/certs/ca.conf \
+        -out ca.crt
+    args:
+      chdir: "{{ role_path }}/files/certs"
+    register: result
+
+- block:
+  - name: Create client and server certificates for core component
+    delegate_to: localhost
+    run_once: true
+    become: false
+    shell: |
+      openssl genrsa -out {{ item }}.key 4096
+
+      openssl req -new -key {{ item }}.key -sha256 \
+        -config "{{ role_path }}/templates/certs/ca.conf" -section {{ item }} \
+        -out "{{ item }}.csr"
+
+      openssl x509 -req -days 3653 -in "{{ item }}.csr" \
+        -copy_extensions copyall \
+        -sha256 -CA "ca.crt" \
+        -CAkey "ca.key" \
+        -CAcreateserial \
+        -out "{{ item }}.crt"
+    args:
+      chdir: "{{ role_path }}/files/certs"
+    loop: "{{ certs.core_components }}"
+
+  - name: Create client and server certificates for nodes
+    delegate_to: localhost
+    run_once: true
+    become: false
+    shell: |
+      openssl genrsa -out {{ item }}.key 4096
+
+      openssl req -new -key {{ item }}.key -sha256 \
+        -config "{{ role_path }}/templates/certs/ca.conf" -section {{ item }} \
+        -out "{{ item }}.csr"
+
+      openssl x509 -req -days 3653 -in "{{ item }}.csr" \
+        -copy_extensions copyall \
+        -sha256 -CA "ca.crt" \
+        -CAkey "ca.key" \
+        -CAcreateserial \
+        -out "{{ item }}.crt"
+    args:
+      chdir: "{{ role_path }}/files/certs"
+    loop: "{{ certs.nodes }}"
+
+- block:
+  - name: Create certs directory for worker node
+    file:
+      path: "/var/lib/kubelet"
+      state: "directory"
+  - name: Copy cert to worker node
+    copy:
+      src: "certs/{{ alias }}.crt"
+      dest: "/var/lib/kubelet/kubelet.crt"
+  - name: Copy private key to worker node
+    copy:
+      src: "certs/{{ alias }}.key"
+      dest: "/var/lib/kubelet/kubelet.key"
+  - name: Copy ca cert to worker node
+    copy:
+      src: "certs/ca.crt"
+      dest: "/var/lib/kubelet/ca.crt"
+  when: inventory_hostname in groups['k8s-worker']
+
+- block:
+  - name: Copy private key to master machine
+    copy:
+      src: "certs/{{ item }}.key"
+      dest: "/tmp"
+    loop: "{{ certs.core_components }}"
+
+  - name: Copy certificates to master machine
+    copy:
+      src: "certs/{{ item }}.crt"
+      dest: "/tmp"
+    loop: "{{ certs.core_components }}"
+
+  - name: Copy ca private key and certificates to master machine  
+    copy:
+      src: "certs/{{ item }}"
+      dest: "/tmp"
+    loop:
+      - ca.key
+      - ca.crt
+  when: inventory_hostname in groups['k8s-master']
