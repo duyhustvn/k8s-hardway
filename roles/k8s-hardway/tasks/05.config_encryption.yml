@@ -1,0 +1,48 @@
+- block:
+  - name: Create directory '{{ encryption_key_directory }}'
+    delegate_to: localhost
+    become: false
+    run_once: true
+    file:
+      path: '{{ encryption_key_directory }}'
+      state: "directory"
+
+  - name: Check if encryption key exists
+    delegate_to: localhost
+    become: false
+    run_once: true
+    stat:
+      path: '{{ encryption_key_path }}'
+    register: enc_key_stat
+
+  - name: Generate the encryption key
+    delegate_to: localhost
+    become: false
+    run_once: true
+    shell: |
+      head -c 32 /dev/urandom | base64 > {{ encryption_key_path }}
+    when: not enc_key_stat.stat.exists
+
+  - name: Read encryption key into variable 
+    delegate_to: localhost
+    become: false
+    run_once: true
+    shell: |
+      cat {{ encryption_key_path }}
+    register: encryption_key_value
+
+  - name: Set encryption_key fact
+    delegate_to: localhost
+    become: false
+    run_once: true
+    set_fact:
+      encryption_key: "{{ encryption_key_value.stdout }}"
+
+- block:
+  - name: Render EncryptionConfiguration file
+    template:
+      src: "encryption/encryption-config.yml.j2"
+      dest: "/tmp"
+      owner: root
+      group: root
+  when: inventory_hostname in groups['k8s-master']

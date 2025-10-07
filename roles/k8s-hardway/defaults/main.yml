@@ -28,3 +28,6 @@ certs:
     - node-0
     - node-1
 
+encryption_key_directory: "{{ role_path }}/files/encryption"
+encryption_key_path: "{{ encryption_key_directory }}/encryption.key"
+

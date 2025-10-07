@@ -21,3 +21,8 @@
   - name: Step 04 Config kubeconfig file
     include_tasks: 04.config_kubeconfig.yml
   tags: [ config_kubeconfig ]
+
+- block:
+  - name: Step 05 Config encryption
+    include_tasks: 05.config_encryption.yml
+  tags: [ config_encryption ]
