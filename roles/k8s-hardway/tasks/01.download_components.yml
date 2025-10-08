@@ -18,3 +18,56 @@
       validate_certs: yes
     environment: "{{ proxy | default('') | trim | ternary({'http_proxy': proxy, 'https_proxy': proxy}, {}) }}"
     loop: "{{ components_url }}"
+  
+  - name: Create directory 
+    delegate_to: localhost
+    run_once: true # download happens only once
+    become: false
+    file:
+      path: "{{ role_path }}/files/k8s_components/{{ item }}"
+      state: "directory"
+    loop:
+      - client
+      - cni-plugins
+      - controller
+      - worker
+
+  - name: Extract 
+    delegate_to: localhost
+    run_once: true # download happens only once
+    become: false
+    shell: |
+      echo "Extract crictl"
+      tar -xvf crictl-v1.32.0-linux-{{ arch }}.tar.gz -C worker
+
+      echo "Extract containerd"
+      tar -xvf containerd-2.1.0-beta.0-linux-{{ arch }}.tar.gz --strip-components 1 -C worker
+
+      echo "Extract cni-plugins"
+      tar -xvf cni-plugins-linux-{{ arch }}-v1.6.2.tgz -C cni-plugins
+
+      echo "Extract etcd"
+      tar -xvf etcd-v3.6.0-rc.3-linux-{{ arch }}.tar.gz \
+      --strip-components 1 \
+      etcd-v3.6.0-rc.3-linux-{{ arch }}/etcdctl \
+      etcd-v3.6.0-rc.3-linux-{{ arch }}/etcd
+    args:
+      chdir: "{{ role_path }}/files/k8s_components"
+
+  - name: Categorize binary
+    delegate_to: localhost
+    run_once: true # download happens only once
+    become: false
+    shell: |
+      cp etcdctl kubectl client
+      cp etcd kube-apiserver kube-controller-manager kube-scheduler controller
+      cp kubelet kube-proxy worker
+      cp runc.{{ arch }} worker/runc
+    args:
+      chdir: "{{ role_path }}/files/k8s_components"
+    register: result
+
+  - name: Print copy resutl
+    debug:
+      var: result
+
