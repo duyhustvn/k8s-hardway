@@ -26,3 +26,9 @@
   - name: Step 05 Config encryption
     include_tasks: 05.config_encryption.yml
   tags: [ config_encryption ]
+
+- block:
+  - name: Step 06 Bootstrapping etcd cluster
+    include_tasks: 06.bootstrap_etcd_cluster.yml
+  tags: [ bootstrap_etcd_cluster ]
+  when: inventory_hostname in groups['k8s-master']
