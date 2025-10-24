@@ -1,0 +1,89 @@
+- block: # Install k8s controller binaries
+    - name: Copy k8s control plane binaries to master
+      copy:
+        src: "k8s_components/controller/{{ item }}"
+        dest: "/usr/local/bin"
+        owner: "root"
+        group: "root"
+        mode: "0500"
+      loop:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+
+    - name: Copy kubectl to master
+      copy:
+        src: "k8s_components/kubectl"
+        dest: "/usr/local/bin"
+        owner: "root"
+        group: "root"
+        mode: "0500"
+
+- block: # Config k8s API server
+    - name: Create k8s lib directory
+      file:
+        path: "/var/lib/kubernetes"
+        state: "directory"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+
+    - name: Copy k8s cert
+      copy:
+        src: "certs/{{ item }}"
+        dest: "/var/lib/kubernetes"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+      loop:
+        - ca.crt
+        - ca.key
+        - kube-api-server.key
+        - kube-api-server.crt
+        - service-accounts.key
+        - service-accounts.crt
+
+    - name: Copy k8s encryption config
+      template:
+        src: "encryption/encryption-config.yml.j2"
+        dest: "/var/lib/kubernetes/encyption-config.yml"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+
+    - name: Copy kube-apiserver.service unit to master
+      copy:
+        src: "units/{{ item }}"
+        dest: "/etc/systemd/system/"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      loop:
+        - kube-apiserver.service
+
+- block: # Config k8s controller manager
+    - name: Copy kube-controller-manager.kubeconfig to master
+      copy:
+        src: "certs/kube-controller-manager.kubeconfig"
+        dest: "/var/lib/kubernetes"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+
+    - name: Copy kube-controller-manager.service unit to master
+      copy:
+        src: "units/{{ item }}"
+        dest: "/etc/systemd/system/"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      loop:
+        - kube-controller-manager.service
+
+    - name: Create k8s configuration directory
+      file:
+        path: "/etc/kubernetes/config"
+        state: "directory"
+        owner: "root"
+        group: "root"
+        mode: "0700"

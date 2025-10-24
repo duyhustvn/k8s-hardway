@@ -32,3 +32,9 @@
     include_tasks: 06.bootstrap_etcd_cluster.yml
   tags: [ bootstrap_etcd_cluster ]
   when: inventory_hostname in groups['k8s-master']
+
+- block:
+  - name: Step 07 Bootstrapping k8s controllers
+    include_tasks: 07.bootstrap_controller.yml
+  tags: [ bootstrap_controller ]
+  when: inventory_hostname in groups['k8s-master']
