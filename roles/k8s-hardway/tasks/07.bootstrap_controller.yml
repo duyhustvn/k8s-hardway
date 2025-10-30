@@ -43,14 +43,6 @@
         - service-accounts.key
         - service-accounts.crt
 
-    - name: Copy k8s encryption config
-      template:
-        src: "encryption/encryption-config.yml.j2"
-        dest: "/var/lib/kubernetes/encyption-config.yml"
-        owner: "root"
-        group: "root"
-        mode: "0700"
-
     - name: Copy kube-apiserver.service unit to master
       copy:
         src: "units/{{ item }}"
@@ -80,6 +72,7 @@
       loop:
         - kube-controller-manager.service
 
+- block: # Config k8s scheduler
     - name: Create k8s configuration directory
       file:
         path: "/etc/kubernetes/config"
@@ -87,3 +80,84 @@
         owner: "root"
         group: "root"
         mode: "0700"
+
+    - name: Copy kube-scheduler.kubeconfig to master
+      copy:
+        src: "certs/kube-scheduler.kubeconfig"
+        dest: "/var/lib/kubernetes"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+
+    - name: Copy kube-scheduler.service unit to master
+      copy:
+        src: "units/{{ item }}"
+        dest: "/etc/systemd/system/"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      loop:
+        - kube-scheduler.service
+      
+    - name: Copy kube-scheduler.yaml to master
+      copy:
+        src: "kube-scheduler.yaml"
+        dest: "/etc/kubernetes/config"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+
+- block:
+    - name: Start the controller 
+      systemd:
+        name: "{{ item}}"
+        state: "started"
+        enabled: true
+      loop:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+
+- block: 
+    - name: Check k8s API server
+      uri:
+        url: "https://127.0.0.1:6443/version"
+        method: "GET"
+        validate_certs: false
+        return_content: true
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 5
+      delay: 5
+
+    - name: Print k8s API server version
+      debug:
+        var: result.json
+
+- block: # Config rbac
+    - name: Copy admin.kubeconfig
+      copy:
+        src: "certs/admin.kubeconfig"
+        dest: "/var/lib/kubernetes"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+  
+    - name: Copy k8s kube-apiserver-to-kubelet
+      copy:
+        src: "kube-apiserver-to-kubelet.yaml"
+        dest: "/var/lib/kubernetes/kube-apiserver-to-kubelet.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+    
+    - name: Create rbac
+      command: "kubectl apply -f kube-apiserver-to-kubelet.yaml --kubeconfig admin.kubeconfig"
+      args:
+        chdir: "/var/lib/kubernetes"
+      register: result
+
+    - name: Print result
+      debug:
+        var: result.stdout_lines

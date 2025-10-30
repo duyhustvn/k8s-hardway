@@ -41,8 +41,9 @@
 - block:
   - name: Render EncryptionConfiguration file
     template:
-      src: "encryption/encryption-config.yml.j2"
-      dest: "/tmp"
+      src: "encryption/encryption-config.yaml.j2"
+      dest: "/var/lib/kubernetes/encryption-config.yaml"
       owner: root
       group: root
-  when: inventory_hostname in groups['k8s-master']
+      mode: "0700"
+  when: inventory_hostname in groups['k8s-master'] 
